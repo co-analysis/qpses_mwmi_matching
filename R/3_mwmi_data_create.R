@@ -22,7 +22,7 @@ mwmi_df <- rawdat_mwmi %>%
   filter(tm>=202403) #%>% # Filter to only 2024 Q1 onwards
 
 #------------------------#
-mwmi_to_qpses_name_matcher = read_csv("output_data/mwmi_to_qpses_name_matcher.csv")
+mwmi_to_qpses_name_matcher = read_csv("data/output_data/mwmi_to_qpses_name_matcher.csv")
 #------------------------#
 
 mwmi_join <- mwmi_df %>%
@@ -49,4 +49,4 @@ mwmi_total <- mwmi_join %>%
 mwmi_join2 <- mwmi_join %>% bind_rows(mwmi_total)
 
 ## Save RDS file to data folder
-saveRDS(mwmi_join2, file="output_data/match_data_mwmi.RDS")
+saveRDS(mwmi_join2, file="data/output_data/data_match_mwmi.RDS")

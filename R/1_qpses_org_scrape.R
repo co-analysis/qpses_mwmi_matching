@@ -3,8 +3,8 @@ source("load_libs.R")
 
 #--------------------------------------------------------------------------#
 
-qpses_files = list.files("QPSES_data_files", full.names=T)
-qpses_files_no_ext = tools::file_path_sans_ext(qpses_files) %>% str_remove("QPSES_data_files/")
+qpses_files = list.files("data/QPSES_files", full.names=T)
+qpses_files_no_ext = tools::file_path_sans_ext(qpses_files) %>% str_remove("data/QPSES_files/")
 
 qpses_read <- purrr::map_df(
   .x = set_names(qpses_files,qpses_files_no_ext),
@@ -159,4 +159,4 @@ join_qpses <- qpses_df3_with_COmerge %>%
 
 
 ## Save RDS file to data folder
-saveRDS(join_qpses, file="output_data/match_data_qpses.RDS")
+saveRDS(join_qpses, file="data/output_data/data_match_qpses.RDS")

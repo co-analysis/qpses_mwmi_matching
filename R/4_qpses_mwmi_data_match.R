@@ -3,8 +3,8 @@ source("load_libs.R")
 
 ## Load cleaned data from QPSES & MWMI
 #--------#
-join_qpses = readRDS(file="output_data/match_data_qpses.RDS")
-join_mwmi = readRDS(file="output_data/match_data_mwmi.RDS")
+join_qpses = readRDS(file="data/output_data/data_match_qpses.RDS")
+join_mwmi = readRDS(file="data/output_data/data_match_mwmi.RDS")
 #--------#
 
 
@@ -104,4 +104,4 @@ df_complete2 <- df_complete %>%
 
 #---------------------------------------------------------------------------------#
 ## Save RDS file to data folder
-saveRDS(df_complete, file="qpses_mwmi_matched_data.RDS")
+saveRDS(df_complete, file="data/output_data/matched_data_qpses_mwmi.RDS")

@@ -70,4 +70,4 @@ test <- mwmi_with_qpses_naming %>%
   tally() %>%
   select(-n)
   
-test %>% write.csv(file="output_data/mwmi_to_qpses_name_matcher.csv", row.names=F)
+test %>% write.csv(file="data/output_data/mwmi_to_qpses_name_matcher.csv", row.names=F)

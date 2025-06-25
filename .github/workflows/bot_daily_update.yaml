@@ -25,8 +25,8 @@ jobs:
           
       - name: Scrape files
         run: |
-          source("3_mwmi_data_create.R")
-          source("4_qpses_mwmi_data_match.R")
+          source("R/3_mwmi_data_create.R")
+          source("R/4_qpses_mwmi_data_match.R")
         shell: Rscript {0}
         
       - name: Commit files
@@ -34,5 +34,5 @@ jobs:
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
           git add --all
-          git commit -am "run scrape"
+          git commit -am "run daily scrape"
           git push
