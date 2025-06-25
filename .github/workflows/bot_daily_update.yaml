@@ -3,7 +3,7 @@ name: daily-refresh
 on:
   workflow_dispatch:
   schedule:
-    - cron: '33 3 * * *'
+    - cron: '44 4 * * *'
 
 jobs:
   test-actions:
@@ -17,31 +17,16 @@ jobs:
       
       - name: Install packages
         run: |
-          install.packages("dplyr")
-          install.packages("purrr")
-          install.packages("httr")
-          install.packages("jsonlite")
-          install.packages("lubridate")
-          install.packages("magrittr")
-          install.packages("ratelimitr")
-          install.packages("readODS")
-          install.packages("readr")
+          install.packages("tidyverse")
           install.packages("readxl")
-          install.packages("rvest")
-          install.packages("stringr")
-          install.packages("stringi")
-          install.packages("tibble")
-          install.packages("tidyr")
-          install.packages("unpivotr")
+          install.packages("magrittr")
+          install.packages("lubridate")
         shell: Rscript {0}
           
       - name: Scrape files
         run: |
-          source("R/10_gov_search_results.R")
-          source("R/11_data_links_results.R")
-          source("R/12_download_data_files.R")
-          source("R/13_match_and_format.R")
-          source("R/14_aggregate_clean.R")
+          source("3_mwmi_data_create.R")
+          source("4_qpses_mwmi_data_match.R")
         shell: Rscript {0}
         
       - name: Commit files
