@@ -3,7 +3,7 @@ name: daily-refresh
 on:
   workflow_dispatch:
   schedule:
-    - cron: '44 4 * * *'
+    - cron: '25 11 * * *'
 
 jobs:
   test-actions:
