@@ -74,9 +74,11 @@ df_complete <- df_match_with_check %>%
   #
   select(-dif,-dif_n,-matching) %>%
   #
+  mutate(value_imput=ifelse( (is.na(value_QPSES) & is.na(value_MWMI)), value_LA, NA)) %>%
+  mutate(value_LA=ifelse(is.na(value_imput),value_LA,NA)) %>%
   pivot_longer(starts_with("value_"), names_to="source", values_to="value") %>%
   mutate(source=gsub("value_","",source)) %>%
-  mutate(source=ifelse(source=="LA","complete",source)) %>%
+  mutate(source=ifelse(source=="LA","available",source)) %>%
   #
   mutate(tm=as.numeric(tm)) %>%
   #
