@@ -74,8 +74,14 @@ df_complete <- df_match_with_check %>%
   #
   select(-dif,-dif_n,-matching) %>%
   #
-  mutate(value_imput=ifelse( (is.na(value_QPSES) & is.na(value_MWMI)), value_LA, NA)) %>%
-  mutate(value_LA=ifelse(is.na(value_imput),value_LA,NA)) %>%
+  group_by(measure,dept_norm,body_norm) %>%
+  mutate(known=ifelse(!is.na(value_QPSES)|!is.na(value_MWMI),tm,NA)) %>%
+  mutate(known=max(known,na.rm=T)) %>%
+  ungroup() %>%
+  mutate(value_imput=ifelse(tm>known,value_LA,NA)) %>%
+  mutate(value_LA=ifelse(tm>known,NA,value_LA)) %>%
+  select(-known) %>%
+  #
   pivot_longer(starts_with("value_"), names_to="source", values_to="value") %>%
   mutate(source=gsub("value_","",source)) %>%
   mutate(source=ifelse(source=="LA","available",source)) %>%
