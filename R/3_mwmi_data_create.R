@@ -46,7 +46,7 @@ mwmi_total <- mwmi_join %>%
   mutate(dept_norm="Total Employment", body_norm="total employment") %>%
   ungroup()
 
-mwmi_join2 <- mwmi_join %>% bind_rows(mwmi_total)
+mwmi_join2 <- mwmi_join %>% bind_rows(mwmi_total) %>% filter(!mwmi_value==0)
 
 ## Save RDS file to data folder
 saveRDS(mwmi_join2, file="data/output_data/data_match_mwmi.RDS")
