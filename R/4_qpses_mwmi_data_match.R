@@ -74,9 +74,17 @@ df_complete <- df_match_with_check %>%
   #
   select(-dif,-dif_n,-matching) %>%
   #
+  group_by(measure,dept_norm,body_norm) %>%
+  mutate(known=ifelse(!is.na(value_QPSES)|!is.na(value_MWMI),tm,NA)) %>%
+  mutate(known=max(known,na.rm=T)) %>%
+  ungroup() %>%
+  mutate(value_imput=ifelse(tm>=known,value_LA,NA)) %>%
+  mutate(value_LA=ifelse(tm>known,NA,value_LA)) %>%
+  select(-known) %>%
+  #
   pivot_longer(starts_with("value_"), names_to="source", values_to="value") %>%
   mutate(source=gsub("value_","",source)) %>%
-  mutate(source=ifelse(source=="LA","complete",source)) %>%
+  mutate(source=ifelse(source=="LA","available",source)) %>%
   #
   mutate(tm=as.numeric(tm)) %>%
   #
@@ -85,7 +93,6 @@ df_complete <- df_match_with_check %>%
   mutate(across(qpses_dept:qpses_body, ~ifelse(source=="QPSES",.,NA))) %>%
   mutate(across(mwmi_dept:mwmi_body, ~ifelse(source=="MWMI",.,NA))) %>%
   select(tm,ends_with("_norm"),qpses_scope,measure,source,value,starts_with("qpses_"),starts_with("mwmi_"))
-
 
 
 df_totals_to_join <- df_complete %>% 
