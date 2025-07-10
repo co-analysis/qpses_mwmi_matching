@@ -100,7 +100,17 @@ df_totals_to_join <- df_complete %>%
 df_complete2 <- df_complete %>%
   filter(!(source!="QPSES" & body_norm=="total employment")) %>%
   bind_rows(df_totals_to_join) %>%
-  arrange(tm,dept_norm,body_norm,measure)
+  arrange(tm,dept_norm,body_norm,measure) %>%
+  #
+  mutate(Date=paste0(substr(tm,1,4),"-",substr(tm,5,6),"-01")) %>%
+  mutate(Date=as.Date(Date, "%Y-%m-%d")) %>%
+  mutate(lastday=days_in_month(Date)) %>%
+  group_by(tm) %>%
+  mutate(Date=gsub('.{2}$', lastday, Date)) %>%
+  mutate(Date=as.Date(Date, "%Y-%m-%d")) %>%
+  ungroup() %>%
+  select(-lastday)  %>%
+  relocate(Date,.after=tm)
 
 #---------------------------------------------------------------------------------#
 ## Save RDS file to data folder

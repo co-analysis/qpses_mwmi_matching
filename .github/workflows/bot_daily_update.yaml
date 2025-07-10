@@ -21,6 +21,7 @@ jobs:
           install.packages("readxl")
           install.packages("magrittr")
           install.packages("lubridate")
+          install.packages("zoo")
         shell: Rscript {0}
           
       - name: Scrape files
