@@ -52,8 +52,8 @@ df_match_with_check <- df_match_wide %>%
   filter(!(grepl("Local Gov",dept_norm) & tm<202406)) %>%
   filter(dept_norm!="Communities and Local Government") %>% 
   #
-  pivot_wider(names_from = source, names_prefix = "value_", values_from = value_body) %>%
-  mutate(dif=value_QPSES/value_MWMI, dif_n=value_QPSES-value_MWMI) %>%
+  pivot_wider(names_from = source, names_prefix = "raw_value_", values_from = value_body) %>%
+  mutate(dif=raw_value_QPSES/raw_value_MWMI, dif_n=raw_value_QPSES-raw_value_MWMI) %>%
   #
   mutate(matching=ifelse(dif<.95|dif>1.05, "n","y")) %>%
   mutate(matching=ifelse(((dif_n>=0&dif_n<=5) | (dif_n<=0&dif_n>=-5)), "y",matching)) %>%
@@ -63,48 +63,60 @@ df_match_with_check <- df_match_wide %>%
 
 
 df_complete <- df_match_with_check %>%
+  group_by(measure,dept_norm) %>%
+  mutate(latest_month_with_data=ifelse(!(is.na(raw_value_QPSES) & is.na(raw_value_MWMI)),tm,NA)) %>%
+  mutate(latest_month_with_data=max(latest_month_with_data, na.rm=TRUE)) %>%
   #
-  mutate(value_LA=ifelse(matching=="y" & is.na(value_MWMI), value_QPSES, value_MWMI)) %>%
-  mutate(value_LA=ifelse(is.na(matching), value_QPSES, value_LA)) %>%
-  #
-  group_by(measure,dept_norm,body_norm) %>%
-  mutate(value_LA = ifelse(tm==max(df_match_with_check$tm) & is.na(value_LA), lag(value_LA), value_LA)) %>%
-  fill(value_LA, .direction="down") %>%
-  ungroup() %>%
+  mutate(value_available=ifelse(matching=="y" & is.na(raw_value_MWMI), raw_value_QPSES, raw_value_MWMI)) %>%
+  mutate(value_available=ifelse(is.na(matching), raw_value_QPSES, value_available)) %>%
   #
   select(-dif,-dif_n,-matching) %>%
   #
   group_by(measure,dept_norm,body_norm) %>%
-  mutate(known=ifelse(!is.na(value_QPSES)|!is.na(value_MWMI),tm,NA)) %>%
-  mutate(known=max(known,na.rm=T)) %>%
+  mutate(value_available = ifelse(tm==max(df_match_with_check$tm) & is.na(value_available), lag(value_available), value_available)) %>%
+  fill(value_available, .direction="down") %>%
   ungroup() %>%
-  mutate(value_imput=ifelse(tm>=known,value_LA,NA)) %>%
-  mutate(value_LA=ifelse(tm>known,NA,value_LA)) %>%
-  select(-known) %>%
   #
-  pivot_longer(starts_with("value_"), names_to="source", values_to="value") %>%
+  group_by(measure,dept_norm,body_norm) %>%
+  mutate(ref_month_for_body=ifelse(!is.na(raw_value_QPSES)|!is.na(raw_value_MWMI),tm,NA)) %>%
+  mutate(ref_month_for_body=max(ref_month_for_body,na.rm=TRUE)) %>%
+  ungroup() %>%
+  mutate(value_imput=ifelse(tm>=ref_month_for_body,value_available,NA)) %>%
+  #
+  mutate(value_available=ifelse(tm<=latest_month_with_data, value_available, NA)) %>% # Set "_available" to be latest data month and earlier
+  mutate(value_imput=ifelse(tm<latest_month_with_data, NA, value_imput)) %>% # Set "_imput" to be latest data month and later
+  select(dept_norm:tm,starts_with("raw_"),starts_with("value_")) %>%
+  #
+  mutate(value_match_QM = ifelse(is.na(raw_value_MWMI),NA,raw_value_QPSES))
+
+df_complete_long <- df_complete %>%   
+  #
+  pivot_longer(contains("value_"), names_to="source", values_to="value") %>%
   mutate(source=gsub("value_","",source)) %>%
-  mutate(source=ifelse(source=="LA","available",source)) %>%
   #
   mutate(tm=as.numeric(tm)) %>%
   #
   left_join(df_match_OG_names) %>%
   distinct(.) %>%
-  mutate(across(qpses_dept:qpses_body, ~ifelse(source=="QPSES",.,NA))) %>%
-  mutate(across(mwmi_dept:mwmi_body, ~ifelse(source=="MWMI",.,NA))) %>%
-  select(tm,ends_with("_norm"),qpses_scope,measure,source,value,starts_with("qpses_"),starts_with("mwmi_"))
+  mutate(across(qpses_dept:qpses_body, ~ifelse(source=="raw_QPSES",.,NA))) %>%
+  mutate(across(mwmi_dept:mwmi_body, ~ifelse(source=="raw_MWMI",.,NA))) %>%
+  select(tm,ends_with("_norm"),qpses_scope,measure,source,value,starts_with("qpses_"),starts_with("mwmi_")) %>%
+  #
+  filter(!(body_norm=="defence electronics and components agency" & tm>202403))
 
 
-df_totals_to_join <- df_complete %>% 
+#----------------------------------------#
+df_totals_to_join <- df_complete_long %>% 
   filter(!body_norm=="total employment") %>% 
   group_by(tm,qpses_scope,measure,source) %>% 
-  summarise(value=sum(value,na.rm=T)) %>%
+  summarise(value=sum(value, na.rm=TRUE)) %>%
   mutate(mwmi_dept=ifelse(source=="MWMI","manual_total",NA), mwmi_body=ifelse(source=="MWMI","manual_total",NA)) %>%
   mutate(dept_norm="Total Employment", body_norm="total employment") %>%
   filter(source!="QPSES")
+#----------------------------------------#
 
 
-df_complete2 <- df_complete %>%
+df_complete2 <- df_complete_long %>%
   filter(!(source!="QPSES" & body_norm=="total employment")) %>%
   bind_rows(df_totals_to_join) %>%
   arrange(tm,dept_norm,body_norm,measure) %>%
@@ -121,4 +133,5 @@ df_complete2 <- df_complete %>%
 
 #---------------------------------------------------------------------------------#
 ## Save RDS file to data folder
-saveRDS(df_complete2, file="data/output_data/matched_data_qpses_mwmi.RDS")
+#saveRDS(df_complete2, file="data/output_data/matched_data_qpses_mwmi.RDS")
+saveRDS(df_complete2, file="data/output_data/matched_data_qpses_mwmi_temp.RDS")
