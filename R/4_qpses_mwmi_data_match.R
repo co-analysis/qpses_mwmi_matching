@@ -110,14 +110,14 @@ df_totals_to_join <- df_complete_long %>%
   filter(!body_norm=="total employment") %>% 
   group_by(tm,qpses_scope,measure,source) %>% 
   summarise(value=sum(value, na.rm=TRUE)) %>%
-  mutate(mwmi_dept=ifelse(source=="MWMI","manual_total",NA), mwmi_body=ifelse(source=="MWMI","manual_total",NA)) %>%
+  mutate(mwmi_dept=ifelse(source=="raw_MWMI","manual_total",NA), mwmi_body=ifelse(source=="raw_MWMI","manual_total",NA)) %>%
   mutate(dept_norm="Total Employment", body_norm="total employment") %>%
-  filter(source!="QPSES")
+  filter(source!="raw_QPSES")
 #----------------------------------------#
 
 
 df_complete2 <- df_complete_long %>%
-  filter(!(source!="QPSES" & body_norm=="total employment")) %>%
+  filter(!(source!="raw_QPSES" & body_norm=="total employment")) %>%
   bind_rows(df_totals_to_join) %>%
   arrange(tm,dept_norm,body_norm,measure) %>%
   #
