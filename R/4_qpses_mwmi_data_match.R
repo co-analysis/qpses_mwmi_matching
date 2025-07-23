@@ -7,7 +7,6 @@ join_qpses = readRDS(file="data/output_data/data_match_qpses.RDS")
 join_mwmi = readRDS(file="data/output_data/data_match_mwmi.RDS")
 #--------#
 
-
 df_match <- full_join(join_qpses, join_mwmi) %>% 
   #select(tm,t,ends_with("_dept"),org_type,value_type, measure, ends_with("_norm"), ends_with("_value"), qpses_scope) %>%
   select(tm,t,ends_with("_norm"),org_type,value_type, measure,ends_with("_value"), qpses_scope, qpses_dept,qpses_body,mwmi_dept,mwmi_body) %>%
@@ -21,7 +20,9 @@ df_match <- full_join(join_qpses, join_mwmi) %>%
   group_by(tm,dept_norm,body_norm) %>%
   fill(mwmi_dept,.direction="updown") %>%
   fill(mwmi_body,.direction="updown") %>%
-  ungroup()
+  ungroup() %>%
+  #
+  filter(qpses_scope=="y")
 
 #---------------#
 # Pull out orginal names from QPSES and MWMI files, to match on later
@@ -39,7 +40,7 @@ df_match_wide <- df_match %>%
   select(tm,ends_with("_norm"),qpses_scope,source,measure,value_body) %>%
   pivot_wider(names_from = tm, values_from = value_body)
 
-
+#--------------------------------------------------------------------------------------------------------------------------------------#
 
 df_match_with_check <- df_match_wide %>%
   pivot_longer(starts_with("20"), names_to="tm", values_to="value_body") %>%
@@ -61,6 +62,7 @@ df_match_with_check <- df_match_wide %>%
   fill(matching, .direction="down") %>%
   ungroup()
 
+#--------------------------------------------------------------------------------------------------------------------------------------#
 
 df_complete <- df_match_with_check %>%
   group_by(measure,dept_norm) %>%
@@ -89,6 +91,8 @@ df_complete <- df_match_with_check %>%
   #
   mutate(value_match_QM = ifelse(is.na(raw_value_MWMI),NA,raw_value_QPSES))
 
+#--------------------------------------------------------------------------------------------------------------------------------------#
+
 df_complete_long <- df_complete %>%   
   #
   pivot_longer(contains("value_"), names_to="source", values_to="value") %>%
@@ -104,17 +108,24 @@ df_complete_long <- df_complete %>%
   #
   filter(!(body_norm=="defence electronics and components agency" & tm>202403))
 
-
 #----------------------------------------#
 df_totals_to_join <- df_complete_long %>% 
-  filter(!body_norm=="total employment") %>% 
+  filter(!body_norm=="total employment") %>%
+  select(tm:value) %>%
+  pivot_wider(names_from = source, values_from = value) %>%
+  mutate(available=ifelse(is.na(available),imput,available)) %>%
+  #
+  #filter(measure=="FTE") %>%
+  #filter(dept_norm=="Defence") %>%
+  #filter(tm>=202503) %>% print(n=Inf)
+  pivot_longer(raw_QPSES:match_QM, names_to="source", values_to="value") %>%
+  #
   group_by(tm,qpses_scope,measure,source) %>% 
   summarise(value=sum(value, na.rm=TRUE)) %>%
   mutate(mwmi_dept=ifelse(source=="raw_MWMI","manual_total",NA), mwmi_body=ifelse(source=="raw_MWMI","manual_total",NA)) %>%
   mutate(dept_norm="Total Employment", body_norm="total employment") %>%
   filter(source!="raw_QPSES")
 #----------------------------------------#
-
 
 df_complete2 <- df_complete_long %>%
   filter(!(source!="raw_QPSES" & body_norm=="total employment")) %>%
@@ -131,7 +142,6 @@ df_complete2 <- df_complete_long %>%
   select(-lastday)  %>%
   relocate(Date,.after=tm)
 
-#---------------------------------------------------------------------------------#
+#--------------------------------------------------------------------------------------------------------------------------------------#
 ## Save RDS file to data folder
-#saveRDS(df_complete2, file="data/output_data/matched_data_qpses_mwmi.RDS")
 saveRDS(df_complete2, file="data/output_data/matched_data_qpses_mwmi_V2.RDS")
