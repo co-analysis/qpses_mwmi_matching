@@ -30,8 +30,6 @@ df_match_OG_names <- df_match %>% select(tm,dept_norm,body_norm,qpses_dept:mwmi_
 #---------------#
 
 df_match_wide <- df_match %>% 
-  filter(qpses_scope=="y") %>%
-  #
   select(tm:qpses_scope) %>%
   pivot_longer(ends_with("_value"), names_to="source", values_to="value_body") %>%
   mutate(source=str_to_upper(str_remove(source,"_value"))) %>%
@@ -71,6 +69,7 @@ df_complete <- df_match_with_check %>%
   #
   mutate(value_available=ifelse(matching=="y" & is.na(raw_value_MWMI), raw_value_QPSES, raw_value_MWMI)) %>%
   mutate(value_available=ifelse(is.na(matching), raw_value_QPSES, value_available)) %>%
+  mutate(value_available=ifelse(!is.na(raw_value_QPSES),raw_value_QPSES,value_available)) %>%
   #
   select(-dif,-dif_n,-matching) %>%
   #
@@ -89,46 +88,46 @@ df_complete <- df_match_with_check %>%
   mutate(value_imput=ifelse(tm<latest_month_with_data, NA, value_imput)) %>% # Set "_imput" to be latest data month and later
   select(dept_norm:tm,starts_with("raw_"),starts_with("value_")) %>%
   #
-  mutate(value_match_QM = ifelse(is.na(raw_value_MWMI),NA,raw_value_QPSES))
+  mutate(value_match_QM = ifelse(is.na(raw_value_MWMI),NA,raw_value_QPSES)) %>%
+  mutate(value_final=ifelse(is.na(value_available),value_imput,value_available)) %>%
+  relocate(value_match_QM,.after=raw_value_MWMI)
+
 
 #--------------------------------------------------------------------------------------------------------------------------------------#
 
 df_complete_long <- df_complete %>%   
-  #
-  pivot_longer(contains("value_"), names_to="source", values_to="value") %>%
-  mutate(source=gsub("value_","",source)) %>%
-  #
   mutate(tm=as.numeric(tm)) %>%
   #
   left_join(df_match_OG_names) %>%
   distinct(.) %>%
-  mutate(across(qpses_dept:qpses_body, ~ifelse(source=="raw_QPSES",.,NA))) %>%
-  mutate(across(mwmi_dept:mwmi_body, ~ifelse(source=="raw_MWMI",.,NA))) %>%
-  select(tm,ends_with("_norm"),qpses_scope,measure,source,value,starts_with("qpses_"),starts_with("mwmi_")) %>%
+  #mutate(across(qpses_dept:qpses_body, ~ifelse(source=="raw_QPSES",.,NA))) %>%
+  #mutate(across(mwmi_dept:mwmi_body, ~ifelse(source=="raw_MWMI",.,NA))) %>%
+  #select(tm,ends_with("_norm"),qpses_scope,measure,source,value,starts_with("qpses_"),starts_with("mwmi_")) %>%
   #
   filter(!(body_norm=="defence electronics and components agency" & tm>202403))
 
 #----------------------------------------#
+
 df_totals_to_join <- df_complete_long %>% 
-  filter(!body_norm=="total employment") %>%
-  select(tm:value) %>%
-  pivot_wider(names_from = source, values_from = value) %>%
-  mutate(available=ifelse(is.na(available),imput,available)) %>%
+  filter(body_norm=="total employment") %>% select(dept_norm:raw_value_QPSES) %>%
   #
-  #filter(measure=="FTE") %>%
-  #filter(dept_norm=="Defence") %>%
-  #filter(tm>=202503) %>% print(n=Inf)
-  pivot_longer(raw_QPSES:match_QM, names_to="source", values_to="value") %>%
-  #
-  group_by(tm,qpses_scope,measure,source) %>% 
-  summarise(value=sum(value, na.rm=TRUE)) %>%
-  mutate(mwmi_dept=ifelse(source=="raw_MWMI","manual_total",NA), mwmi_body=ifelse(source=="raw_MWMI","manual_total",NA)) %>%
-  mutate(dept_norm="Total Employment", body_norm="total employment") %>%
-  filter(source!="raw_QPSES")
+  full_join(
+    df_complete_long %>% 
+      filter(!body_norm=="total employment") %>%
+      select(-raw_value_QPSES) %>%
+      group_by(qpses_scope,measure,tm) %>%
+      summarise(across(raw_value_MWMI:value_final, ~ sum(.,na.rm=TRUE)))
+  ) %>%
+  mutate(qpses_dept="Total employment", qpses_body=qpses_dept) %>%
+  mutate(mwmi_dept="manual_total", mwmi_body=mwmi_dept) %>%
+  mutate(across(qpses_dept:qpses_body, ~ifelse(is.na(raw_value_QPSES),NA,.)))
+#
+
+
 #----------------------------------------#
 
 df_complete2 <- df_complete_long %>%
-  filter(!(source!="raw_QPSES" & body_norm=="total employment")) %>%
+  filter(!body_norm=="total employment") %>%
   bind_rows(df_totals_to_join) %>%
   arrange(tm,dept_norm,body_norm,measure) %>%
   #
@@ -144,4 +143,5 @@ df_complete2 <- df_complete_long %>%
 
 #--------------------------------------------------------------------------------------------------------------------------------------#
 ## Save RDS file to data folder
-saveRDS(df_complete2, file="data/output_data/matched_data_qpses_mwmi_V2.RDS")
+#saveRDS(df_complete2, file="data/output_data/matched_data_qpses_mwmi_V2.RDS")
+saveRDS(df_complete2, file="data/output_data/matched_data_qpses_mwmi_V3.RDS")
