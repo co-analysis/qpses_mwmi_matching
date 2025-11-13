@@ -36,17 +36,26 @@ mwmi_join <- mwmi_df %>%
   #
   filter(!(grepl("Level",dept_norm) & tm>=202406)) %>%
   filter(!(grepl("Local Gov",dept_norm) & tm<202406)) %>%
-  filter(dept_norm!="Communities and Local Government")
+  filter(dept_norm!="Communities and Local Government") %>% 
+  #
+  filter(!mwmi_body=="Teaching Regulation Authority") %>% 
+  #
+  ## temp filter - 2025/11/11 - remove once returns are corrected
+  filter(!(tm==202507 & mwmi_body=="Department of Health and Social Care (excluding agencies)")) %>% 
+  filter(!(tm==202503 & dept_norm=="foreign commonwealth and development office")) %>%
+  filter(!(dept_norm=="cabinet office" & body_norm=="uk hydrographic office"))
+
 
 ## Create total FTE/Headcount rows for MWMI
 mwmi_total <- mwmi_join %>%
   group_by(group,sub_group,Year,Month,tm,measure) %>%
   summarise(mwmi_value=sum(mwmi_value,na.rm=T)) %>%
   mutate(mwmi_dept="manual_total", mwmi_body="manual_total") %>%
-  mutate(dept_norm="Total Employment", body_norm="total employment") %>%
+  mutate(dept_norm="total employment", body_norm="total employment") %>%
   ungroup()
 
 mwmi_join2 <- mwmi_join %>% bind_rows(mwmi_total) %>% filter(!mwmi_value==0)
 
 ## Save RDS file to data folder
 saveRDS(mwmi_join2, file="data/output_data/data_match_mwmi.RDS")
+#mwmi_join2 <- read_rds("data/output_data/data_match_mwmi.RDS")
