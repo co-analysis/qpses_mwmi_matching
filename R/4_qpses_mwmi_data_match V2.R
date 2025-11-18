@@ -3,8 +3,8 @@ source("load_libs.R")
 
 ## Load cleaned data from QPSES & MWMI
 #--------#
-join_qpses = readRDS(file="data/output_data/data_match_qpses.RDS")
-join_mwmi = readRDS(file="data/output_data/data_match_mwmi.RDS")
+join_qpses = readRDS(file="data/output_data/clean_data_qpses.RDS")
+join_mwmi = readRDS(file="data/output_data/clean_data_mwmi.RDS")
 #--------#
 
 #--------------------------------------------------------------------------------#
@@ -88,9 +88,9 @@ df_match_with_check <- df_match_wide %>%
   arrange(tm,dept_norm,body_norm) %>%
   #
   ## Removing MOG rename for DLUHC/MHCLG
-  filter(!(grepl("Level",dept_norm) & tm>=202406)) %>%
-  filter(!(grepl("Local Gov",dept_norm) & tm<202406)) %>%
-  filter(dept_norm!="Communities and Local Government") %>% 
+  filter(!(grepl("level",dept_norm) & tm>=202406)) %>%
+  filter(!(grepl("local gov",dept_norm) & tm<202406)) %>%
+  filter(dept_norm!="communities and local government") %>% 
   #
   pivot_wider(names_from = source, names_prefix = "raw_value_", values_from = value_body) %>%
   mutate(dif=raw_value_QPSES/raw_value_MWMI, dif_n=raw_value_QPSES-raw_value_MWMI) %>%
@@ -156,7 +156,10 @@ df_complete_long <- df_complete %>%
   #mutate(across(mwmi_dept:mwmi_body, ~ifelse(source=="raw_MWMI",.,NA))) %>%
   #select(tm,ends_with("_norm"),qpses_scope,measure,source,value,starts_with("qpses_"),starts_with("mwmi_")) %>%
   #
-  filter(!(body_norm=="defence electronics and components agency" & tm>202403))
+  filter(!(body_norm=="defence electronics and components agency" & tm>202403)) %>% 
+  filter(!(grepl("level",dept_norm) & tm>=202406)) %>%
+  filter(!(grepl("local gov",dept_norm) & tm<202406)) %>%
+  filter(dept_norm!="communities and local government")
 
 #----------------------------------------#
 
@@ -211,5 +214,5 @@ df_complete_long %>%
 ## Save RDS file to data folder
 saveRDS(df_complete2, file="data/output_data/matched_data_qpses_mwmi_V5.RDS")
 #
-# df_complete2 <- read_rds("data/output_data/matched_data_qpses_mwmi_V5.RDS")
+ df_complete2 <- read_rds("data/output_data/matched_data_qpses_mwmi_V5.RDS")
 # df_complete2_old <- read_rds("data/output_data/matched_data_qpses_mwmi_V4.RDS")

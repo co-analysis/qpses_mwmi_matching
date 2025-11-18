@@ -34,9 +34,9 @@ mwmi_join <- mwmi_df %>%
   rename("mwmi_value"=value) %>%
   mutate(measure=ifelse(measure=="hc","Headcount","FTE")) %>%
   #
-  filter(!(grepl("Level",dept_norm) & tm>=202406)) %>%
-  filter(!(grepl("Local Gov",dept_norm) & tm<202406)) %>%
-  filter(dept_norm!="Communities and Local Government") %>% 
+  filter(!(grepl("level",dept_norm) & tm>=202406)) %>%
+  filter(!(grepl("local gov",dept_norm) & tm<202406)) %>%
+  filter(dept_norm!="communities and local Government") %>% 
   #
   filter(!mwmi_body=="Teaching Regulation Authority") %>% 
   #
@@ -57,5 +57,5 @@ mwmi_total <- mwmi_join %>%
 mwmi_join2 <- mwmi_join %>% bind_rows(mwmi_total) %>% filter(!mwmi_value==0)
 
 ## Save RDS file to data folder
-saveRDS(mwmi_join2, file="data/output_data/data_match_mwmi.RDS")
-#mwmi_join2 <- read_rds("data/output_data/data_match_mwmi.RDS")
+saveRDS(mwmi_join2, file="data/output_data/clean_data_mwmi.RDS")
+#mwmi_join2 <- read_rds("data/output_data/clean_data_mwmi.RDS")
