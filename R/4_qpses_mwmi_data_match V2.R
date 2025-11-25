@@ -87,60 +87,50 @@ df_match3_qpses_check <- df_match2_wide %>%
   mutate(latest_qpses_month_by_body=ifelse(!is.na(raw_value_QPSES),tm,NA)) %>%
   mutate(latest_qpses_month_by_body=as.numeric(max(latest_qpses_month_by_body, na.rm=TRUE))) %>%
   mutate(next_qpses_month_by_body=ifelse(grepl(12,latest_qpses_month_by_body),latest_qpses_month_by_body+91,latest_qpses_month_by_body+3)) %>% 
-  mutate(qpses_remove_check=ifelse(tm==next_qpses_month_by_body & is.na(raw_value_QPSES) & tm<=most_recent_qpses_q, "remove",NA)) %>% 
-  fill(qpses_remove_check, .direction = "down") %>% 
-  mutate(qpses_remove_check=ifelse(tm<next_qpses_month_by_body,"keep",qpses_remove_check)) %>% 
-  fill(qpses_remove_check, .direction = "updown") %>% 
   #
-  ungroup() %>% 
-  arrange(tm,dept_norm,body_norm) %>% 
-  filter(qpses_remove_check!="remove")
+  mutate(qpses_remove_check=case_when(
+    tm<=latest_qpses_month_by_body ~ "keep", # Keep data before latest QPSES data for org
+    is.na(raw_value_QPSES) & tm==next_qpses_month_by_body & tm<=most_recent_qpses_q ~ "remove", # Remove data when NA in QPSES and quarter is before most recent_qpses_q
+    T~NA)) %>%
+  #
+  fill(qpses_remove_check,.direction = "down") %>%
+  mutate(qpses_remove_check = ifelse(tm>latest_qpses_month_by_body & (is.na(raw_value_QPSES) & is.na(raw_value_MWMI)) & qpses_remove_check=="keep", NA, qpses_remove_check)) %>% 
+  fill(qpses_remove_check,.direction = "updown") %>% 
+  #
+  ungroup() %>%
+  arrange(tm,dept_norm,body_norm) %>%
+  filter(qpses_remove_check=="keep")
 
 #--------------------------------------------------------------------------------------------------------------------------------------#
 
 df_match4_value_compare <- df_match3_qpses_check %>% 
   select(-(latest_qpses_month_by_body:qpses_remove_check)) %>% 
-  mutate(dif=raw_value_QPSES/raw_value_MWMI, dif_n=raw_value_QPSES-raw_value_MWMI) %>%
+  mutate(dif=raw_value_MWMI/raw_value_QPSES, dif_n=raw_value_QPSES-raw_value_MWMI) %>%
   #
-  ## Test if difference between QPSES and MWMI is over 5% or 5 FTE/headcount 
-  mutate(matching=ifelse(dif<.95|dif>1.05, "n","y")) %>%
+  ## Test if difference between QPSES and MWMI is less than 5% or within 5 FTE/headcount 
+  mutate(matching=ifelse(dif<=.95|dif>=1.05, "n","y")) %>%
   mutate(matching=ifelse(((dif_n>=0&dif_n<=5) | (dif_n<=0&dif_n>=-5)), "y",matching)) %>%
+  mutate(matching=ifelse(!is.na(raw_value_QPSES) & is.na(raw_value_MWMI), "n", matching)) %>% 
   group_by(measure,dept_norm,body_norm) %>%
   fill(matching, .direction="down") %>%
-  ungroup()
+  ungroup() 
+ 
 
+
+df_match4_value_compare %>% filter(measure=="FTE") %>% filter(grepl("export",body_norm))
 #--------------------------------------------------------------------------------------------------------------------------------------#
 
 df_complete <- df_match4_value_compare %>%
   #
   mutate(tm=as.numeric(tm)) %>% 
   filter(tm>=2024) %>% 
-  # filter(body_norm %in% c("charity commission","education and skills funding agency")) %>% 
-  # filter(measure=="FTE") %>% 
-  #----------------------------------------#
-  group_by(body_norm,measure) %>%
-  mutate(latest_qpses_month_by_body=ifelse(!is.na(raw_value_QPSES),tm,NA)) %>%
-  mutate(latest_qpses_month_by_body=as.numeric(max(latest_qpses_month_by_body, na.rm=TRUE))) %>%
-  mutate(next_qpses_month_by_body=ifelse(grepl(12,latest_qpses_month_by_body),latest_qpses_month_by_body+91,latest_qpses_month_by_body+3)) %>% 
-  mutate(qpses_remove_check=ifelse(tm==next_qpses_month_by_body & is.na(raw_value_QPSES) & tm<=most_recent_qpses_q, "remove",NA)) %>% 
-  fill(qpses_remove_check, .direction = "updown") %>% 
-  mutate(qpses_remove_check=ifelse(tm<=latest_qpses_month_by_body,"keep",qpses_remove_check)) %>% 
-  fill(qpses_remove_check, .direction = "updown") %>% 
-  #
-  #arrange(body_norm) %>% 
-  filter(qpses_remove_check!="remove") %>% 
-  select(-(latest_qpses_month_by_body:qpses_remove_check)) %>% 
   #----------------------------------------#
   #
-  # Create column showing the latest month that has data for both QPSES and MWMI
-  group_by(measure,dept_norm) %>%
-  #mutate(latest_month_with_data=ifelse(!(is.na(raw_value_QPSES) & is.na(raw_value_MWMI)),tm,NA)) %>%
-  #mutate(latest_month_with_data=max(latest_month_with_data, na.rm=TRUE)) %>%
-  #
+  group_by(measure,dept_norm,body_norm) %>%
   # Create column with any available data for month in question
-  mutate(value_available=ifelse(matching=="y" & is.na(raw_value_MWMI), raw_value_QPSES, raw_value_MWMI)) %>% # If data matching and MWMI is missing, use QPSES value
-  mutate(value_available=ifelse(is.na(matching), raw_value_QPSES, value_available)) %>% # If data does NOT match, use QPSES value
-  mutate(value_available=ifelse(!is.na(raw_value_QPSES),raw_value_QPSES,value_available)) %>% # If data is available for QPSES, use QPSES value
+  mutate(value_available=ifelse(!is.na(raw_value_QPSES),raw_value_QPSES,NA)) %>%
+  mutate(value_available=ifelse(is.na(value_available) & matching=="y", raw_value_MWMI, value_available)) %>%
+  fill(value_available, .direction="down") %>% 
   #
   select(-dif,-dif_n,-matching) %>%
   #
@@ -204,7 +194,7 @@ df_totals_to_join <- df_complete_long %>%
   mutate(value_final=ifelse(is.na(raw_value_QPSES),value_final,raw_value_QPSES))
 
 #df_complete_long %>% filter(dept_norm=="total employment", measure=="FTE")
-#df_totals_to_join %>% filter(dept_norm=="total employment", measure=="FTE")
+df_totals_to_join %>% filter(dept_norm=="total employment", measure=="FTE")
 #----------------------------------------#
 
 df_complete2 <- df_complete_long %>%
