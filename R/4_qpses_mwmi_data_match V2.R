@@ -210,13 +210,26 @@ df_complete2 <- df_complete_long %>%
   mutate(Date=gsub('.{2}$', lastday, Date)) %>%
   mutate(Date=as.Date(Date, "%Y-%m-%d")) %>%
   ungroup() %>%
-  select(-lastday)  %>%
-  relocate(Date,.after=tm)
+  select(-lastday)
 
+
+df_complete3 <- df_complete2 %>%
+  mutate(Department=qpses_dept, 
+         Body=qpses_body) %>% 
+  group_by(dept_norm,body_norm) %>% 
+  fill(Department) %>% 
+  fill(Body) %>%
+  #
+  mutate(Department=ifelse(dept_norm=="cabinet office","Cabinet Office",Department)) %>% 
+  #mutate(Body=ifelse(body_norm=="cabinet office","Cabinet Office",Body)) %>% 
+  relocate(Date,.before=Department)
+
+
+df_complete3 %>% filter(dept_norm=="cabinet office") %>% filter(measure=="FTE",tm==202509)
 
 #--------------------------------------------------------------------------------------------------------------------------------------#
 ## Save RDS file to data folder
-saveRDS(df_complete2, file="data/output_data/matched_data_qpses_mwmi_V5.RDS")
+saveRDS(df_complete3, file="data/output_data/matched_data_qpses_mwmi_V5.RDS")
 #
 #df_complete2 <- read_rds("data/output_data/matched_data_qpses_mwmi_V5.RDS")
 #df_complete2_old <- read_rds("data/output_data/matched_data_qpses_mwmi_V4.RDS")

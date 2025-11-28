@@ -37,9 +37,11 @@ mwmi_df <- rawdat_mwmi %>%
 keep_endpb = c(
   "advisory conciliation and arbitration service", # DBT
   "office for budget responsibility" , "office of budget responsibility", # HMT(2)
-  "institute for apprenticeships and technical education", # DFE
+  "institute for apprenticeships and technical education", # DFE 
   "health and safety executive" # DWP
 )
+
+### !!! SET THE 4 ABOVE TO BE "Crown-ndpb"
 #---------------------------------------------------------------------------------#
 
 mwmi_df_nn <- mwmi_df %>%
@@ -63,6 +65,8 @@ mwmi_with_qpses_naming <- mwmi_df_nn %>%
   mutate(body_norm=ifelse(body_norm=="office of budget responsibility", gsub("office of","office for",body_norm),body_norm)) %>% # of - for
   mutate(body_norm=ifelse(body_norm=="teaching regulation authority", "teaching regulation agency",body_norm)) %>% # authority - agency 
   mutate(body_norm=ifelse(body_norm=="valuation office", "valuation office agency",body_norm)) %>%
+  mutate(body_norm=ifelse(body_norm=="high speed", "high speed 2",body_norm)) %>%
+  
   #
   mutate(body_norm=ifelse(grepl("queen elizabeth",body_norm), "queen elizabeth ii centre",body_norm)) %>%
   mutate(body_norm=ifelse(grepl("intellectual property",body_norm), "intellectual property office",body_norm)) %>%
@@ -75,7 +79,6 @@ mwmi_with_qpses_naming <- mwmi_df_nn %>%
                                                "Crown Non Departmental Public Body") | body_norm %in% keep_endpb),"y","n")) %>%
   #
   filter(!body_norm=="teaching regulation authority") %>%
-  filter(!body_norm=="ukri") %>% # CHECK WHY
   arrange(tm,dept_norm,body_norm)
 
 
@@ -85,10 +88,10 @@ mwmi_names_norm <- mwmi_with_qpses_naming %>% select(dept_norm, body_norm, mwmi_
 #
 mwmi_names_norm %>% write.csv(file="data/output_data/mwmi_to_qpses_name_matcher.csv", row.names=F)
 
-
-mwmi_with_qpses_naming %>% select(dept_norm, body_norm, mwmi_dept, mwmi_body) %>% distinct(.) %>% group_by(body_norm) %>% tally() %>% filter(n!=1)
-#
-mwmi_with_qpses_naming %>% 
-  select(dept_norm, body_norm, mwmi_dept, mwmi_body) %>% 
-  distinct(.) %>% 
-  filter(grepl("ofwat",body_norm))
+# 
+# mwmi_with_qpses_naming %>% select(dept_norm, body_norm, mwmi_dept, mwmi_body) %>% distinct(.) %>% group_by(body_norm) %>% tally() %>% filter(n!=1)
+# #
+# mwmi_with_qpses_naming %>% 
+#   select(dept_norm, body_norm, mwmi_dept, mwmi_body) %>% 
+#   distinct(.) %>% 
+#   filter(grepl("ofwat",body_norm))
